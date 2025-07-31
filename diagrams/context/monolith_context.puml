@@ -1,0 +1,5 @@
+@startuml
+legend
+<size:8> Rendered with Plantuml Version %version() </size>
+end legend
+@enduml
