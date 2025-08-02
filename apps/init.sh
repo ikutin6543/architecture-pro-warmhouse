@@ -6,8 +6,7 @@ set -e
 echo "Starting the Smart Home Sensor API..."
 echo "Building and starting containers..."
 docker compose up --build -d
-F
-echo "Waiting for services to be ready..."FF
+echo "Waiting for services to be ready..."
 # Wait for PostgreSQL to be ready
 for i in {1..30}; do
   if docker exec smarthome-postgres pg_isready -U postgres > /dev/null 2>&1; then

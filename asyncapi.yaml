@@ -25,12 +25,12 @@ channels:
         $ref: '#/components/messages/command'
       changeStatus:
         $ref: '#/components/messages/changeStatus'
-  telemetry:
-    address: telemetry
-    description: getting telemetry of sensors
+  ping:
+    address: ping
+    description: getting ping of sensors
     messages:
-      getTelimetry:
-        $ref: '#/components/messages/getTelimetry'
+      ping:
+        $ref: '#/components/messages/ping'
   firmwareUpdate:
     address: firware.update
     description: update firmware of sensor
@@ -58,10 +58,10 @@ operations:
     channel:
       $ref: '#/channels/firmwareUpdate'
     summary: firmware update to sensors
-  getTelimetry:
+  ping:
     action: receive
     channel:
-      $ref : '#/channels/telemetry'
+      $ref : '#/channels/ping'
 
 components:
   securitySchemes:
@@ -77,6 +77,8 @@ components:
       payload:
         type: object
         properties:
+          action:
+            const: changeStatus
           sensorId:
             type: integer
             description: unique id of sensor
@@ -85,13 +87,15 @@ components:
             description: status of sensor
       examples:
         - payload:
+            action: changeStatus
             sensorId: 1
             status: disable
-
     command:
       name: command
       title: send command to sensor
       payload:
+        action:
+          const: command
         type: object
         properties:
           sensorId:
@@ -106,10 +110,12 @@ components:
         additionalProperties: false
       examples:
         - payload:
+            action: command
             sensorId: 1
             command: opendoor
             data: {}
         - payload:
+            action: command
             sensor: 2
             command: turnLight
             data: {}
@@ -119,6 +125,8 @@ components:
       payload:
         type: object
         properties:
+          action:
+            const: firmwareUpdate
           sensorId:
             type: integer
             description: unique id of sensor
@@ -127,10 +135,11 @@ components:
             description:  file`s url for update
       examples:
         - payload:
+            action: firmwareUpdate
             sensorId: 1
-            fileUrl: "http://firmware.example.com/v2.4.0.bin"
-    getTelimetry:
-      title: recieve message from sensor with metric
+            fileUrl: http://firmware.example.com/v2.4.0.bin
+    ping:
+      title: ping of sensors
       payload:
         type: object
         properties:
@@ -138,9 +147,8 @@ components:
             type: integer
             description: unique id of sensor
           value:
-            type: string
-            description: value of sensors`s metric
+            const: ping
       examples:
         - payload:
             sensorId: 3
-            value: "35"
+            value: ping

@@ -14,7 +14,7 @@ Container_Boundary(WarmHouse, "WarmHouse System") {
   Container(Telemetry, "TelemetrySystem", "NodeJs", "handler of sensor data", "NodeJs")
   Container(Broker, "Message broker", "Kafka", "Message broker")
   Container(Auth, "Auth", "NodeJs", "Authorization and authentication")
-  Container(SensorEventHandler, "Device Event Handler", "NodeJs", "Event management related to devices")
+  Container(SensorEventHandler, "Sensor Event Handler", "NodeJs", "Event management related to devices")
   Container(APIServer, "APIServer", "NodeJs", "Device registration/removal, sending command to sensor, telemetry collection")
 }
 
@@ -22,7 +22,6 @@ System_Ext(Sensor, "Sensor", "External sensor to getting telemetry and recieving
 
 Rel(Auth,Database,"TCP/IP")
 
-Rel(Sensor,SensorEventHandler,"UDP")
 Rel(SensorEventHandler,Sensor,"API")
 
 Rel(Broker,SensorEventHandler,"recieve command")
@@ -36,7 +35,10 @@ Rel(APIServer,Database,"TCP/IP")
 Rel(APIServer,Broker,"Send command to sensor")
 
 Rel(Telemetry,Database,Database)
-Rel(Broker,Telemetry,"Telemetry event of sensor")
+
+
+Rel(Sensor,Telemetry,"UDP")
+
 
 Rel(User,APIServer,"API")
 @enduml

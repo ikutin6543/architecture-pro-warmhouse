@@ -1,5 +1,11 @@
--- Create the database if it doesn't exist
-CREATE DATABASE smarthome;
+-- Проверяем и создаем базу данных, если её нет
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT FROM pg_database WHERE datname = 'smarthome') THEN
+        CREATE DATABASE smarthome;
+END IF;
+END
+$$;
 
 -- Connect to the database
 \c smarthome;

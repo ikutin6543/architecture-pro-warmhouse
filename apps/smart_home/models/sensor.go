@@ -32,6 +32,10 @@ type SensorCreate struct {
 	Unit     string     `json:"unit"`
 }
 
+type SensorCommand struct {
+	Command string `json:"command" binding:"required"`
+}
+
 // SensorUpdate represents the data that can be updated for a sensor
 type SensorUpdate struct {
 	Name     string     `json:"name"`

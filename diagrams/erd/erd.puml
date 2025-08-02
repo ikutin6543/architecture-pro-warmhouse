@@ -29,9 +29,10 @@ entity "DeviceType" as deviceType {
   name varchar
 }
 
-entity "TelemetryData" as telemetryData {
+entity "Telemetry" as telemetry {
   *id number <<generated>>
   #sensorId number
+  timestamp timestamp
   value varchar
 }
 
@@ -39,7 +40,6 @@ user ||--o{ location : "userId = id"
 location ||--o{ sensor : "locationId = id"
 deviceType ||--o{ sensor : "deviceTypeId = id"
 
-sensor ||--o{ telemetryData : "sensorId = id"
-
+sensor ||--o{ telemetry : "sensorId = id"
 
 @enduml
