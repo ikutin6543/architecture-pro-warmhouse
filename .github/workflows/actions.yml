@@ -36,7 +36,6 @@ jobs:
 
       - name: Commit Diagrams
         run: |
-          echo $(git branch)
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
           git config pull.rebase true   # rebase
@@ -54,14 +53,58 @@ jobs:
           if: success()
 
   generate-asyncApi:
-    runs-on: node-latest
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pages: write
+      id-token: write
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}/kafka
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '21'
+
       - name: install asyncapi
         run: npm install -g @asyncapi/cli
 
       - name: generate asyncApi
-      - run:  asyncapi generate fromTemplate asyncapi.yaml @asyncapi/html-template@3.0.0 -o kafka --use-new-generator
+        run:  asyncapi generate fromTemplate asyncapi.yaml @asyncapi/html-template@3.0.0 -o kafka --use-new-generator
+
+      - name: Commit asyncApi
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git config pull.rebase true   # rebase
+          git add kafka/**/*
+          git commit -m "Automated async api documentation" || exit 0
+
+      - name: Pull latest changes
+        run: git pull origin ${{ github.head_ref || github.ref_name }}
+
+      - name: Push asyncApi
+        uses: ad-m/github-push-action@master
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          branch: ${{ github.head_ref || github.ref_name }}
+          if: success()
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          # Upload entire repository
+          path: 'kafka/.'
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

@@ -1,0 +1,146 @@
+asyncapi: 3.0.0
+info:
+  title: Sensor manadment Kafka API
+  version: 1.0.0
+  description: |-
+    These APIs enable sensor management and device data collection.
+  license:
+    name: Apache 2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0
+
+defaultContentType: application/json
+servers:
+  default:
+    host: "localhost:18092"
+    protocol: "kafka-secure"
+    security:
+      - $ref: '#/components/securitySchemes/saslScram'
+
+channels:
+  management:
+    address: management
+    description: management of sensors
+    messages:
+      command:
+        $ref: '#/components/messages/command'
+      changeStatus:
+        $ref: '#/components/messages/changeStatus'
+  telemetry:
+    address: telemetry
+    description: getting telemetry of sensors
+    messages:
+      getTelimetry:
+        $ref: '#/components/messages/getTelimetry'
+  firmwareUpdate:
+    address: firware.update
+    description: update firmware of sensor
+    messages:
+      firmwareUpdate:
+        $ref: '#/components/messages/firmwareUpdate'
+
+operations:
+  sendCommand:
+    action: send
+    channel:
+      $ref: '#/channels/management'
+    messages:
+      - $ref: '#/channels/management/messages/command'
+    summary: Send command to sensor
+  changeStatus:
+    action: send
+    channel:
+      $ref: '#/channels/management'
+    messages:
+      - $ref: '#/channels/management/messages/changeStatus'
+    summary: Send command to sensor
+  firmwareUpdate:
+    action: send
+    channel:
+      $ref: '#/channels/firmwareUpdate'
+    summary: firmware update to sensors
+  getTelimetry:
+    action: receive
+    channel:
+      $ref : '#/channels/telemetry'
+
+components:
+  securitySchemes:
+    saslScram:
+      type: httpApiKey
+      in: header
+      name: api_key
+      description: providing a user key
+  messages:
+    changeStatus:
+      name: changeStatus
+      title: change status of device
+      payload:
+        type: object
+        properties:
+          sensorId:
+            type: integer
+            description: unique id of sensor
+          status:
+            type: string
+            description: status of sensor
+      examples:
+        - payload:
+            sensorId: 1
+            status: disable
+
+    command:
+      name: command
+      title: send command to sensor
+      payload:
+        type: object
+        properties:
+          sensorId:
+            type: integer
+            description: unique id of sensor
+          command:
+            type: string
+            description: command for sensor
+          data:
+            type: object
+            description: extra data for command
+        additionalProperties: false
+      examples:
+        - payload:
+            sensorId: 1
+            command: opendoor
+            data: {}
+        - payload:
+            sensor: 2
+            command: turnLight
+            data: {}
+    firmwareUpdate:
+      name: firmwareUpdate
+      title: update firmware of sensor
+      payload:
+        type: object
+        properties:
+          sensorId:
+            type: integer
+            description: unique id of sensor
+          fileUrl:
+            type: string
+            description:  file`s url for update
+      examples:
+        - payload:
+            sensorId: 1
+            fileUrl: "http://firmware.example.com/v2.4.0.bin"
+    getTelimetry:
+      title: recieve message from sensor with metric
+      payload:
+        type: object
+        properties:
+          sensorId:
+            type: integer
+            description: unique id of sensor
+          value:
+            type: string
+            description: value of sensors`s metric
+      examples:
+        - payload:
+            sensorId: 3
+            value: "35"
