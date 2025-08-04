@@ -1,0 +1,45 @@
+@startuml
+title WarmHouse ERD
+
+top to bottom direction
+
+entity "User" as user {
+  *id number <<generated>>
+  firstName varchar
+  secondName varchar
+}
+
+entity "Location" as location {
+  *id number <<generated>>
+  #userId number
+  name varchar
+}
+
+entity "Sensor" as sensor {
+  *id number <<generated>>
+  status varchar
+  url varchar
+  #locationId number
+  #deviceTypeId number
+  serialNumber number
+}
+
+entity "DeviceType" as deviceType {
+  *id number <<generated>>
+  name varchar
+}
+
+entity "Telemetry" as telemetry {
+  *id number <<generated>>
+  #sensorId number
+  timestamp timestamp
+  value varchar
+}
+
+user ||--o{ location : "userId = id"
+location ||--o{ sensor : "locationId = id"
+deviceType ||--o{ sensor : "deviceTypeId = id"
+
+sensor ||--o{ telemetry : "sensorId = id"
+
+@enduml

@@ -1,0 +1,34 @@
+@startuml
+title WarmHouse Component Diagram
+
+top to bottom direction
+
+!includeurl https://raw.githubusercontent.com/RicardoNiepel/C4-PlantUML/master/C4_Component.puml
+
+Container_Boundary(WarmHouseSystem, "WarmHouseSystem") {
+  Container(APIServer, "Web Application", "NodeJs", "Handles user interactions")
+  Container(Database, "Database", "PostgreSQL", "Stores data of sensors")
+  Container(Broker, "Broker", "Kafka", "Message broker")
+}
+
+Container(APIServer, "API server", "NodeJs") {
+  Component(SensorController, "SensorController", "handler of event`s sensor")
+  Component(AuthController, "AuthController", "Authorization and authentication")
+  Component(UserController, "UserController", "API for external user")
+  Component(TelemetryController, "TelemetryController", "handler of telemetry of sensor")
+  Component(ServiceLayer, "Service Layer", "Business logic")
+
+  Component(ServiceLayer, "Service Layer", "Business logic")
+  Component(RepositoryLayer, "RepositoryLayer", "Data access logics")
+}
+
+Rel(SensorController,ServiceLayer,"Calls business logic")
+Rel(UserController,ServiceLayer,"Calls business logic")
+Rel(TelemetryController,ServiceLayer,"Calls business logic")
+Rel(ServiceLayer,RepositoryLayer,"Calls business logic")
+Rel(AuthController,ServiceLayer,"Calls business logic")
+
+Rel(RepositoryLayer,Broker,"Get/send Event")
+Rel(RepositoryLayer,Database,"Read/Write Data")
+
+@enduml

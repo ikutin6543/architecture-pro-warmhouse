@@ -1,0 +1,112 @@
+name: actions
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  generate-diagrams:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Install PlantUML
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y graphviz
+          wget https://sourceforge.net/projects/plantuml/files/plantuml.jar/download -O plantuml.jar
+
+      - name: Generate Diagrams
+        run: |
+          java -jar plantuml.jar diagrams/**/*.puml
+
+      - name: Commit Diagrams
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git config pull.rebase true   # rebase
+          git add diagrams/**/*.png
+          git commit -m "Automated diagram generation" || exit 0
+
+      - name: Pull latest changes
+        run: git pull origin ${{ github.head_ref || github.ref_name }}
+
+      - name: Push Diagrams
+        uses: ad-m/github-push-action@master
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          branch: ${{ github.head_ref || github.ref_name }}
+          if: success()
+
+  generate-asyncApi:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pages: write
+      id-token: write
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '21'
+
+      - name: install asyncapi
+        run: npm install -g @asyncapi/cli
+
+      - name: generate asyncApi
+        run: |
+          mkdir pages
+          asyncapi generate fromTemplate asyncapi.yaml @asyncapi/html-template@3.0.0 -o pages/kafka --use-new-generator
+
+      - name: Commit asyncApi
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git config pull.rebase true   # rebase
+          git add pages/**/*
+          git commit -m "Automated async api documentation" || exit 0
+
+      - name: Pull latest changes
+        run: git pull origin ${{ github.head_ref || github.ref_name }}
+
+      - name: Push asyncApi
+        uses: ad-m/github-push-action@master
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          branch: ${{ github.head_ref || github.ref_name }}
+          if: success()
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          # Upload entire repository
+          path: 'pages/.'
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

@@ -1,0 +1,75 @@
+@startuml
+title WarmHouse Code Diagram
+
+top to bottom direction
+
+!includeurl https://raw.githubusercontent.com/RicardoNiepel/C4-PlantUML/master/C4_Component.puml
+
+enum SensorStatus {
+  OK("OK"),
+  Error("Error"),
+  Off("Off")
+}
+
+class BrokerService {
+  +sendCommandToSensor()
+}
+
+class SensorService{
+  +getStatus()
+  +registration()
+  +getTelemetry()
+}
+
+class DbRepository {
+  +read()
+  +write()
+}
+
+class TelemetryService {
+  +getTelemetry()
+}
+
+class User {
+  +String id
+  +String firstName
+  +String secondName
+}
+
+class DeviceType {
+  +String id
+  +String name
+}
+
+class Sensor {
+  +Int id
+  +SensorStatus status
+  +Location location
+  +User user
+  +String url
+  +DeviceType type
+  +Int serial_number
+}
+
+class Location {
+  +Int id
+  +name
+  +getSensors()
+}
+
+BrokerService "1" -- "0..*" Sensor : includes
+BrokerService "1" -- "1" DbRepository : has
+
+TelemetryService "1" -- "1" DbRepository : has
+TelemetryService "1" -- "1" SensorService : has
+
+Location  "1"  o-- "0..*" Sensor
+Sensor ---left> Location
+
+User  "1"  o-- "0..*" Sensor
+Sensor --> User
+
+DeviceType  "1"  o-- "0..*" Sensor
+Sensor --> DeviceType
+
+@enduml

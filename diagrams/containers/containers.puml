@@ -1,0 +1,44 @@
+@startuml
+title WarmHouse Container Diagram
+
+top to bottom direction
+
+!includeurl https://raw.githubusercontent.com/RicardoNiepel/C4-PlantUML/master/C4_Component.puml
+
+Person(User, "User", "A user of WarmHouse system")
+
+System(WarmHouse, "WarmHouse System", "System for storing and receiving data from sensors")
+
+Container_Boundary(WarmHouse, "WarmHouse System") {
+  Container(Database, "DatabaseSystem", "PostgreSQL", "Stores data of sensors")
+  Container(Telemetry, "TelemetrySystem", "NodeJs", "handler of sensor data", "NodeJs")
+  Container(Broker, "Message broker", "Kafka", "Message broker")
+  Container(Auth, "Auth", "NodeJs", "Authorization and authentication")
+  Container(SensorEventHandler, "Sensor Event Handler", "NodeJs", "Event management related to devices")
+  Container(APIServer, "APIServer", "NodeJs", "Device registration/removal, sending command to sensor, telemetry collection")
+}
+
+System_Ext(Sensor, "Sensor", "External sensor to getting telemetry and recieving command")
+
+Rel(Auth,Database,"TCP/IP")
+
+Rel(SensorEventHandler,Sensor,"API")
+
+Rel(Broker,SensorEventHandler,"recieve command")
+Rel(SensorEventHandler,Broker,"send telemetry")
+
+Rel(SensorEventHandler,Database,"TCP/IP")
+
+Rel(APIServer,Auth,"API")
+
+Rel(APIServer,Database,"TCP/IP")
+Rel(APIServer,Broker,"Send command to sensor")
+
+Rel(Telemetry,Database,Database)
+
+
+Rel(Sensor,Telemetry,"UDP")
+
+
+Rel(User,APIServer,"API")
+@enduml

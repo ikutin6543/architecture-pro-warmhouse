@@ -1,0 +1,19 @@
+@startuml
+title WarmHouse monolith System Context Diagram
+
+top to bottom direction
+
+!includeurl https://raw.githubusercontent.com/RicardoNiepel/C4-PlantUML/master/C4_Component.puml
+
+Person(user, "User", "A user of warm house")
+System_Ext(house,"house","Heating system")
+
+System(WarmHouse,"WarmHouse System","System for storing and receiving data from sensors")
+
+Rel(user,WarmHouse,"")
+Rel(WarmHouse,user,"")
+
+Rel(house,WarmHouse,"")
+Rel(WarmHouse,house,"")
+
+@enduml

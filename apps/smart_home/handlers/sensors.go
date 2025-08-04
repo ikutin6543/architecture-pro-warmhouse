@@ -1,11 +1,17 @@
 package handlers
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
+	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
 	"strconv"
+	"time"
 
 	"smarthome/db"
 	"smarthome/models"
@@ -28,6 +34,15 @@ func NewSensorHandler(db *db.DB, temperatureService *services.TemperatureService
 	}
 }
 
+// getEnv gets an environment variable or returns a default value
+func getEnv(key, defaultValue string) string {
+	value := os.Getenv(key)
+	if value == "" {
+		return defaultValue
+	}
+	return value
+}
+
 // RegisterRoutes registers the sensor routes
 func (h *SensorHandler) RegisterRoutes(router *gin.RouterGroup) {
 	sensors := router.Group("/sensors")
@@ -35,11 +50,105 @@ func (h *SensorHandler) RegisterRoutes(router *gin.RouterGroup) {
 		sensors.GET("", h.GetSensors)
 		sensors.GET("/:id", h.GetSensorByID)
 		sensors.POST("", h.CreateSensor)
+		sensors.POST("/command/:id", h.SendCommand)
 		sensors.PUT("/:id", h.UpdateSensor)
 		sensors.DELETE("/:id", h.DeleteSensor)
 		sensors.PATCH("/:id/value", h.UpdateSensorValue)
 		sensors.GET("/temperature/:location", h.GetTemperatureByLocation)
 	}
+}
+
+func PostRequest(url string, requestData interface{}) (map[string]interface{}, int, error) {
+	jsonData, err := json.Marshal(requestData)
+	if err != nil {
+		return nil, 0, fmt.Errorf("ошибка преобразования данных: %v", err)
+	}
+
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
+	if err != nil {
+		return nil, 0, fmt.Errorf("ошибка создания запроса: %v", err)
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, 0, fmt.Errorf("ошибка при выполнении запроса: %v", err)
+	}
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, resp.StatusCode, fmt.Errorf("ошибка чтения ответа: %v", err)
+	}
+
+	var result map[string]interface{}
+	if len(body) > 0 {
+		if err := json.Unmarshal(body, &result); err != nil {
+			return nil, resp.StatusCode, fmt.Errorf("ошибка парсинга JSON: %v", err)
+		}
+	}
+
+	return result, resp.StatusCode, nil
+}
+
+func GetRequest(client *http.Client, url string) (map[string]interface{}, error) {
+	resp, err := client.Get(url)
+	if err != nil {
+		return nil, fmt.Errorf("GET request failed: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("unexpected status code: %d, body: %s", resp.StatusCode, string(body))
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response body: %v", err)
+	}
+
+	var result map[string]interface{}
+	if err := json.Unmarshal(body, &result); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal response: %v, body: %s", err, string(body))
+	}
+
+	return result, nil
+}
+
+func (h *SensorHandler) SendCommand(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid sensor ID"})
+		return
+	}
+
+	fmt.Println(id)
+	var command models.SensorCommand
+	if err := c.ShouldBindJSON(&command); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	telemetryUrl := getEnv("MANAGEMENT_SENSORS_URL", "")
+
+	commandBody := map[string]interface{}{
+		"command": command.Command,
+	}
+
+	resBody, _, err := PostRequest(fmt.Sprintf("%s/api/v1/command/sensor/%d", telemetryUrl, id), commandBody)
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, resBody)
+
+	fmt.Println(command)
+
 }
 
 // GetSensors handles GET /api/v1/sensors
@@ -51,22 +160,39 @@ func (h *SensorHandler) GetSensors(c *gin.Context) {
 	}
 
 	// Update temperature sensors with real-time data from the external API
-	for i, sensor := range sensors {
-		if sensor.Type == models.Temperature {
-			tempData, err := h.TemperatureService.GetTemperatureByID(fmt.Sprintf("%d", sensor.ID))
-			if err == nil {
-				// Update sensor with real-time data
-				sensors[i].Value = tempData.Value
-				sensors[i].Status = tempData.Status
-				sensors[i].LastUpdated = tempData.Timestamp
-				log.Printf("Updated temperature data for sensor %d from external API", sensor.ID)
-			} else {
-				log.Printf("Failed to fetch temperature data for sensor %d: %v", sensor.ID, err)
-			}
-		}
+	// 	for i, sensor := range sensors {
+	// 		if sensor.Type == models.Temperature {
+	// 			tempData, err := h.TemperatureService.GetTemperatureByID(fmt.Sprintf("%d", sensor.ID))
+	// 			if err == nil {
+	// 				// Update sensor with real-time data
+	// 				sensors[i].Value = tempData.Value
+	// 				sensors[i].Status = tempData.Status
+	// 				sensors[i].LastUpdated = tempData.Timestamp
+	// 				log.Printf("Updated temperature data for sensor %d from external API", sensor.ID)
+	// 			} else {
+	// 				log.Printf("Failed to fetch temperature data for sensor %d: %v", sensor.ID, err)
+	// 			}
+	// 		}
+	telemetryUrl := getEnv("TELEMETRY_URL", "")
+	HTTPClient := &http.Client{
+		Timeout: 10 * time.Second,
 	}
 
+	for i, sensor := range sensors {
+		url := fmt.Sprintf("%s/api/v1/sensor/%d", telemetryUrl, sensor.ID)
+		telemetryData, err := GetRequest(HTTPClient, url)
+
+		if err == nil {
+			sensors[i].Value = telemetryData["value"].(float64)
+			sensors[i].Status = "active" // датчик должен сам через события сообщать в каком он статусе
+			sensors[i].LastUpdated, _ = time.Parse(time.RFC3339, telemetryData["timestamp"].(string))
+		}
+
+		fmt.Println(url)
+		fmt.Println(telemetryData)
+	}
 	c.JSON(http.StatusOK, sensors)
+
 }
 
 // GetSensorByID handles GET /api/v1/sensors/:id
